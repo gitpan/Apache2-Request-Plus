@@ -1,0 +1,211 @@
+Apache2::Request::Plus version 0.10
+=========================
+
+NAME
+    Apache2::Request::Plus -- A few extra features added to
+    Apache2::Request.
+
+SYNOPSIS
+     use Apache2::Request::Plus;
+
+     my $r = Apache2::Request::Plus->new();
+
+     # anything you can already do with Apache2::Request
+     $r->content_type('text/html');
+     $r->headers_out->set('charset' => 'ISO-8859-1');
+
+     # was the form submitted (as opposed to just a request sent)?
+     if ($r->form_sent) {
+       # stuff
+     }
+
+DESCRIPTION
+    The original purpose of Apache2::Request::Plus was to make a mod_perl
+    request object that had some of the features of an old school CGI.pm
+    object. An object of this class gives the request object some methods
+    like textfield() and popup_menu() which you may be used to from CGI.pm
+
+    Since its creation this module has also some other convenient methods
+    for creating and processing web forms.
+
+INSTALLATION
+    Apache2::Request::Plus can be installed with the usual routine:
+
+            perl Makefile.PL
+            make
+            make test
+            make install
+
+Paradigm: submit to self and form_sent
+    The methods in this module are built around the idea that the web page
+    form submits back to itself. That is, the form's action is the current
+    page.
+
+    The methods detect if the request was submitted by the form (as opposed
+    to a request from some other source) by looking for a request parameter
+    called "form_sent". By defaul the "$r-"form_open()> method adds a hidden
+    field with the name "form_sent" and the value "1".
+
+METHODS
+  Apache2::Request::Plus->new()
+    Instantiates a new Apache2::Request::Plus object. No parameters needed
+    or used.
+
+  $r->formopen()
+    Returns a <form> tag with optional attributes. The form submits to the
+    current page.
+
+    Its simplest use:
+
+     print $r->formopen();
+
+    outputs a <form> element with a GET method and directing the browser
+    right back to the current page. The hidden "form_sent" field is added
+    directly after the <form> tag.
+
+     <form action="/path/to/current/page.pl" method="GET">
+     <input type="hidden" name="form_sent" value="1">
+
+    option: -action
+
+    Sets the URI of the page the form should submit to. Defaults to the
+    current page. So, for example, this call
+
+     print $r->formopen(-action=>'mypage.pl');
+
+    results in this HTML:
+
+     <form action="mypage.pl" method="GET">
+     <input type="hidden" name="form_sent" value="1">
+
+    option: -method
+
+    Set the method. Usually the method is either GET or POST, though there
+    are other HTTP headers out there too. Defaults to GET. So, this code
+
+     print $r->formopen(-method=>'POST');
+
+    outputs this HTML:
+
+     <form action="/path/to/current/page.pl" method="POST">
+     <input type="hidden" name="form_sent" value="1">
+
+    option: -form_sent
+
+    If this option is true then the hidden "form_sent" field is added to the
+    output. See notes on the $-form_sent()> method.
+
+    This code
+
+     print $r->formopen(-form_sent=>0);
+
+    results in this HTML:
+
+     <form action="/path/to/current/page.pl" method="GET">
+
+    other options
+
+    Any other options sent are output as tag attributes. For example, this
+    code:
+
+     print $r->formopen(-foo=>'bar');
+
+    outputs this HTML:
+
+     <form action="/path/to/current/page.pl" method="GET" foo="bar">
+     <input type="hidden" name="form_sent" value="1">
+
+  $r->form_sent
+    Returns true if the "form_sent" param was sent as true.
+
+    This is handy for discerning the difference between a request for a page
+    that was sent from the form in that page, and one that was requested
+    from outside the page. This distinction is simply made by looking for a
+    parameter called "form_sent".
+
+    For example, if the form is opened with this HTML:
+
+     <form action="mypage.pl" method="GET">
+     <input type="hidden" name="form_sent" value="1">
+
+    then when the form is submitted, $r->form_sent will evaluate to true.
+
+  $r->textfield()
+    Mimics CGI.pm's "textfield()" function. This method is not fully
+    implemented to provide every feature of CGI.pm's "textfield()".
+    Currently provides just the -name option and the ability to add other
+    miscellaneous attributes.
+
+  $r->hidden()
+    Mimics CGI.pm's "hidden()" function. This method is not fully
+    implemented to provide every feature of CGI.pm's "hidden()". Currently
+    provides just the -name option and the ability to add other
+    miscellaneous attributes.
+
+  $r->hiddenfield()
+    Works exactly like "$r-"hidden()>. I just added this function for
+    consistency: if there's a "textfield" method then I felt like there
+    ought to be a hiddenfield() method. My dad the engineer would be proud.
+
+  $r->textarea()
+    Mimics CGI.pm's "textarea()" function. This method is not fully
+    implemented to provide every feature of CGI.pm's "textarea()". Currently
+    provides just the -name option and the ability to add other
+    miscellaneous attributes.
+
+  $r->selectfield()
+    Similar to CGI.pm's popup_menu function. This method is named
+    "selectfield" because 1) it doesn't actually work just like popup_menu
+    so it has a different name to avoid confusion, and 2) I never really
+    liked the name popup_menu() anyway.
+
+    The first argument is the name of the select field. The second argument
+    is an array ref (not an array!) of options. Each option should be a
+    hashref with the value of the option, and, optionally, the text for the
+    option. If the "selected" key is also set in the hashref, and if the
+    form was *not* sent then that option is the default selected option.
+
+    For example, this code:
+
+     my @options;
+
+     push @options, {value=>'stooge1', text=>'Larry'};
+     push @options, {value=>'stooge2', text=>'Curly'};
+     push @options, {value=>'stooge3', text=>'Moe', selected=>1};
+
+     # Note that a *reference* to the array is sent, not just the array!
+     print $r->selectfield('stooges', \@options);
+
+    Outputs the following HTML if the form has not been sent.
+
+     <select name="stooges">
+     <option value="stooge1">Larry</option>
+     <option value="stooge2">Curly</option>
+     <option value="stooge3" selected="true">Moe</option>
+     </select>
+
+  $r->get_cookie($cookie_name)
+    Given a cookie name, returns the cookie's value. For example, this code:
+
+     $r->get_cookie('sessionx');
+
+    might return something like this:
+
+     sessionx=505-6
+
+    Note that the cookie includes the name of the cookie followed by an
+    equals sign followed by the value.
+
+TERMS AND CONDITIONS
+    Copyright (c) 2010 by Miko O'Sullivan. All rights reserved. This program
+    is free software; you can redistribute it and/or modify it under the
+    same terms as Perl itself. This software comes with NO WARRANTY of any
+    kind.
+
+AUTHORS
+    Miko O'Sullivan miko@idocs.com
+
+VERSION
+    Version 0.10 November 17, 2010
+        Initial release
+
